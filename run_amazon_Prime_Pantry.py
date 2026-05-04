@@ -63,7 +63,7 @@ def train(args, use_modal, local_rank):
         
        
         Log_file.info('get llm output...')
-        item_word_embs =torch.load('/dataset/Amazon_Prime_Pantry_llm2vec.pt')
+        item_word_embs =torch.load(Path(__file__).resolve().parent / 'dataset' / 'Amazon_Prime_Pantry_llm2vec.pt')
         item_word_embs=torch.tensor(item_word_embs,dtype=torch.float32)
         Log_file.info('Finish reading item embeddings')
 
@@ -98,7 +98,7 @@ def train(args, use_modal, local_rank):
         ckpt_path = get_checkpoint(model_dir, args.load_ckpt_name)
         checkpoint = torch.load(ckpt_path, map_location=torch.device('cpu'))
         Log_file.info('load checkpoint...')
-        model.load_state_dict(checkpoint['model_state_dict'],strict=False)
+        model.module.load_state_dict(checkpoint['model_state_dict'],strict=False)
         Log_file.info(f"Model loaded from {ckpt_path}")
         start_epoch = int(re.split(r'[._-]', args.load_ckpt_name)[1])
         torch.set_rng_state(checkpoint['rng_state'])
@@ -213,7 +213,7 @@ def run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_
         need_save = True
     else:
         early_stop_count += 1
-        if early_stop_count > 20:
+        if early_stop_count >= 10:
             if is_early_stop:
                 need_break = True
             early_stop_epoch = now_epoch

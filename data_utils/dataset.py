@@ -6,6 +6,9 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import math
 import random
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 class BuildTrainDataset_kl(Dataset): 
     def __init__(self, u2seq, item_content,
@@ -243,7 +246,7 @@ class BuildTrainDataset_new_amazon_pantry(Dataset):
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv('/dataset/Prime_Pantry_fre.csv')
+        ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
         #ee.columns = ['id', 'fre']
         e=ee.sort_values('fre',ascending=False)
         #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]

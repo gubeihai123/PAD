@@ -1,0 +1,84 @@
+# Local IDE / agent state
+.vscode/
+.idea/
+.codex
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local environments
+.conda/
+.venv/
+venv/
+env/
+ENV/
+
+# Logs and runtime outputs
+logs/
+log/
+*.log
+logs_*/
+experiment_results/
+tmp/
+temp/
+
+# Training checkpoints and model outputs
+checkpoint*/
+checkpoints/
+outputs/
+runs/
+wandb/
+tensorboard/
+
+# Large ML / tensor artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.pkl
+*.pickle
+*.npy
+*.npz
+
+# Local model downloads and Hugging Face cache
+models/
+.cache/
+**/.cache/
+
+# Downloaded third-party dependencies / archives
+external/
+
+# Large compressed archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.tar.bz2
+*.tbz2
+*.tar.xz
+*.7z
+*.rar
+*.gz
+
+# Papers and generated documents
+*.pdf
+
+# Keep source-controlled dataset CSV files, but ignore generated tensor dumps.
+dataset/*.pt
+dataset/*.pth
+dataset/*.npy
+dataset/*.npz
+dataset/*.pkl
+dataset/*.pickle

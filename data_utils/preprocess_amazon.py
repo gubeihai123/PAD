@@ -8,6 +8,9 @@ import random
 import os
 import pickle
 import joblib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 def read_behaviors_amazon(behaviors_path, before_item_id_to_dic, before_item_name_to_id, before_item_id_to_name, max_seq_len, min_seq_len, Log_file):
     #Log_file.info("##### news number {} {} (before clearing)#####".format(len(before_item_id_to_dic), len(before_item_name_to_id)))
@@ -83,7 +86,7 @@ def read_behaviors_amazon_pantry(behaviors_path, before_item_id_to_dic, before_i
     Log_file.info('rebuild user seqs...')
     s=0
     l=[]
-    c=pd.read_csv('/dataset/Prime_Pantry_cleaned_history.csv',converters={'history':eval})
+    c=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_cleaned_history.csv',converters={'history':eval})
     for i in range(c.shape[0]):
         user_name = c.iloc[i,1]
         history_item_name = c.iloc[i,2]
@@ -128,7 +131,7 @@ def read_news_bert_amazon_pantry(news_path, args):
     item_id_to_dic = {}
     item_id_to_name = {}
     item_name_to_id = {}
-    c=pd.read_csv('/dataset/metadata_Prime_Pantry.csv')
+    c=pd.read_csv(ROOT / 'dataset' / 'metadata_Prime_Pantry.csv')
     c['index']=c.index+1
     item_name_to_id = c.set_index('asin')['index'].to_dict()
     return item_id_to_dic, item_name_to_id, item_id_to_name

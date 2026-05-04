@@ -59,7 +59,7 @@ def train(args, use_modal, local_rank):
                            before_item_name_to_id, before_item_id_to_name,
                            args.max_seq_len, args.min_seq_len, Log_file)
         Log_file.info('Finish reading behaviors')
-        item_word_embs =torch.load('/dataset/Amazon_Prime_Pantry_llm2vec.pt')
+        item_word_embs =torch.load(Path(__file__).resolve().parent / 'dataset' / 'Amazon_Prime_Pantry_llm2vec.pt')
         item_word_embs=torch.tensor(item_word_embs,dtype=torch.float32)
         Log_file.info('Finish reading item embeddings')
 
@@ -100,6 +100,14 @@ def train(args, use_modal, local_rank):
     if 'None' not in args.load_ckpt_name:
         Log_file.info('load ckpt if not None...')
         ckpt_path = get_checkpoint(model_dir, args.load_ckpt_name)
+        if ckpt_path is None:
+            phase2_model_dir = os.path.join(
+                './checkpoint_amazonpure_id_bert-base-uncased/ft_local/_MOdnn_4',
+                'cpt_modal_cat-bert-base-uncased/ft_local/-MOdnn_4-dnn_0_ed_128_bs_pantry_id_lr_1e-05',
+            )
+            ckpt_path = get_checkpoint(phase2_model_dir, args.load_ckpt_name)
+        if ckpt_path is None:
+            raise FileNotFoundError(f"Cannot find checkpoint {args.load_ckpt_name}")
         checkpoint = torch.load(ckpt_path, map_location=torch.device('cpu'))
         Log_file.info('load checkpoint...')
         model.load_state_dict(checkpoint['model_state_dict'],strict=False)
@@ -201,7 +209,7 @@ def train(args, use_modal, local_rank):
     Log_file.info('gamma2 {}'.format(args.gamma2))
     Log_file.info('lr {}'.format(args.lr))
     item_embeddings3, item_embeddings, id_embs = get_item_embeddings_llm_3tower(model, item_word_embs, args.batch_size, args, use_modal, local_rank)
-    valid_Hit10 = eval_model_2_3tower_amazon_pantry(10, model, users_history_for_test, users_test, item_embeddings3, item_embeddings, id_embs, 512, args,
+    valid_Hit10 = eval_model_2_3tower_amazon_pantry(10, model, users_history_for_test, users_test, item_embeddings3, item_embeddings, id_embs, args.batch_size, args,
                              item_num, Log_file, args.mode, local_rank)
      
 def run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_count,
@@ -210,7 +218,7 @@ def run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_
     eval_start_time = time.time()
     Log_file.info('Validating...')
     item_embeddings3, item_embeddings, id_embs = get_item_embeddings_llm_3tower(model, item_word_embs, batch_size, args, use_modal, local_rank)
-    valid_Hit10 = eval_model_2_3tower_amazon_pantry(10,model, user_history, users_eval, item_embeddings3, item_embeddings, id_embs, 512, args, item_num, Log_file, mode, local_rank)
+    valid_Hit10 = eval_model_2_3tower_amazon_pantry(10,model, user_history, users_eval, item_embeddings3, item_embeddings, id_embs, batch_size, args, item_num, Log_file, mode, local_rank)
     report_time_eval(eval_start_time, Log_file)
     Log_file.info('')
     need_break = False
@@ -222,7 +230,7 @@ def run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_
         need_save = True
     else:
         early_stop_count += 1
-        if early_stop_count > 20:
+        if early_stop_count >= 10:
             if is_early_stop:
                 need_break = True
             early_stop_epoch = now_epoch

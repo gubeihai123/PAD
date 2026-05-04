@@ -42,15 +42,15 @@ for l2_weight in l2_weight_list:
                                 load_ckpt_name='epoch-24.pt'
                             elif embedding_dim==128:
                                 lr=1e-5
-                                load_ckpt_name='epoch-82.pt'
+                                load_ckpt_name='epoch-23.pt'
                             elif embedding_dim==64:
                                 lr=1e-5
                                 load_ckpt_name='epoch-67.pt'
-                            label_screen = '{}_bs{}_ed{}_lr{}_dp{}_L2{}_Flr{}'.format(
+                            label_screen = '{}_bs{}_ed{}_lr{}_dp{}_L2{}'.format(
                                 item_tower, batch_size, embedding_dim, lr,
                                 drop_rate, l2_weight)
-                            run_py = "CUDA_VISIBLE_DEVICES='0,1,2,3,4,5,6,7' \
-                                     torchrun --nproc_per_node 8 --master_port 12345\
+                            run_py = "CUDA_VISIBLE_DEVICES='0,2,3,4' \
+                                     torchrun --nproc_per_node 4 --master_port 12345\
                                      run_amazon_Prime_Pantry_transfer.py --root_data_dir {}  --dataset {} --behaviors {} --news {}\
                                      --mode {} --item_tower {} --load_ckpt_name {} --label_screen {} --logging_num {} --testing_num {}\
                                      --l2_weight {} --drop_rate {} --batch_size {} --lr {} --embedding_dim {} \

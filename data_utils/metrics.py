@@ -6,6 +6,9 @@ import torch.distributed as dist
 import math
 import pandas as pd
 import torch.nn.functional as F
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 class ItemsDataset(Dataset):
     def __init__(self, data):
@@ -1079,7 +1082,7 @@ def eval_model_2_2_amazon_pantry(topk, model, user_history, eval_seq, item_embed
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Prime_Pantry_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1144,7 +1147,7 @@ def eval_model_2_3tower_amazon_pantry(topk, model, user_history, eval_seq,item_e
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Prime_Pantry_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1388,7 +1391,7 @@ def eval_model_2_3tower_amazon_pantry_caser(topk, model, user_history, eval_seq,
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Prime_Pantry_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1518,7 +1521,7 @@ def eval_model_2_junguang_amazon_pantry_caser(topk, model, user_history, eval_se
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Prime_Pantry_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1704,7 +1707,7 @@ def eval_model_2_3tower_amazon_pantry_gru(topk, model, user_history, eval_seq,it
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Prime_Pantry_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1915,5 +1918,4 @@ def eval_model_2_3tower_mind_gru(topk, model, user_history, eval_seq,item_embedd
         mean_eval = eval_concat([Hit10, nDCG10], test_sampler)
         print_metrics(mean_eval, Log_file, v_or_t)
     return mean_eval[0]
-
 
