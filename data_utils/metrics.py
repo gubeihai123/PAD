@@ -7,6 +7,7 @@ import math
 import pandas as pd
 import torch.nn.functional as F
 from pathlib import Path
+from .repro import build_pantry_frequency_bins, require_dir
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -92,9 +93,11 @@ def get_item_word_embs_llm(item_content,  args):
     
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    require_dir(args.llama_path, "Llama model directory")
+    require_dir(args.llm2vec_path, "LLM2Vec PEFT directory")
     l2v = LLM2Vec.from_pretrained(
-        "/llama3-8B",
-        peft_model_name_or_path="/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised",
+        str(args.llama_path),
+        peft_model_name_or_path=str(args.llm2vec_path),
         device_map="cuda" if torch.cuda.is_available() else "cpu",
         torch_dtype=torch.bfloat16,
     )
@@ -103,7 +106,7 @@ def get_item_word_embs_llm(item_content,  args):
     #item_dataloader = DataLoader(item_dataset, batch_size=test_batch_size, num_workers=args.num_workers,
     #                             pin_memory=True, collate_fn=item_collate_fn)
     item_word_embs = []
-    for i in range(79708):
+    for i in range(len(item_content)):
         input_ids = item_content[i]
         if i==1:
             print(input_ids)
@@ -449,7 +452,7 @@ def eval_model(model, user_history, eval_seq, item_embeddings, test_batch_size, 
         print_metrics(mean_eval, Log_file, v_or_t)
     return mean_eval[0]
 
-def eval_model_step2(model, user_history, eval_seq, item_embeddings, test_batch_size, args, item_num, Log_file, v_or_t, local_rank):
+def eval_model_step2(model, user_history, eval_seq, item_embeddings, test_batch_size, args, item_num, Log_file, v_or_t, local_rank, return_full_metrics=False):
     eval_dataset = BuildEvalDataset(u2seq=eval_seq, item_content=item_embeddings,
                                     max_seq_len=args.max_seq_len, item_num=item_num)
     test_sampler = SequentialDistributedSampler(eval_dataset, batch_size=test_batch_size)
@@ -480,6 +483,8 @@ def eval_model_step2(model, user_history, eval_seq, item_embeddings, test_batch_
         Hit10, nDCG10 = eval_all_user
         mean_eval = eval_concat([Hit10, nDCG10], test_sampler)
         print_metrics(mean_eval, Log_file, v_or_t)
+    if return_full_metrics:
+        return {"HR@10": float(mean_eval[0]), "nDCG@10": float(mean_eval[1])}
     return mean_eval[0]
 
 def eval_model_2(model, user_history, eval_seq, item_embeddings,id_embs, test_batch_size, args, item_num, Log_file, v_or_t, local_rank):
@@ -492,7 +497,7 @@ def eval_model_2(model, user_history, eval_seq, item_embeddings,id_embs, test_ba
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -552,7 +557,7 @@ def eval_model_2_2(model, user_history, eval_seq, item_embeddings,id_embs, test_
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -615,7 +620,7 @@ def eval_model_noid(model, user_history, eval_seq, item_embeddings,id_embs, test
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -678,7 +683,7 @@ def eval_model_2_3(model, user_history, eval_seq, item_embeddings,id_embs, test_
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -738,7 +743,7 @@ def eval_model_2_3tower_ablation(model, user_history, eval_seq,item_embeddings3,
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -807,7 +812,7 @@ def eval_model_2_3tower(model, user_history, eval_seq,item_embeddings3, item_emb
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = 10
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -902,7 +907,7 @@ def eval_model_gru_amazon(topk, model, user_history, eval_seq, item_embeddings, 
     return mean_eval[0]
 
 
-def eval_model_amazon(topk, model, user_history, eval_seq, item_embeddings, test_batch_size, args, item_num, Log_file, v_or_t, local_rank):
+def eval_model_amazon(topk, model, user_history, eval_seq, item_embeddings, test_batch_size, args, item_num, Log_file, v_or_t, local_rank, return_full_metrics=False):
     eval_dataset = BuildEvalDataset(u2seq=eval_seq, item_content=item_embeddings,
                                     max_seq_len=args.max_seq_len, item_num=item_num)
     test_sampler = SequentialDistributedSampler(eval_dataset, batch_size=test_batch_size)
@@ -935,6 +940,8 @@ def eval_model_amazon(topk, model, user_history, eval_seq, item_embeddings, test
         Hit10, nDCG10 = eval_all_user
         mean_eval = eval_concat([Hit10, nDCG10], test_sampler)
         print_metrics(mean_eval, Log_file, v_or_t)
+    if return_full_metrics:
+        return {"HR@10": float(mean_eval[0]), "nDCG@10": float(mean_eval[1])}
     return mean_eval[0]
 
 def eval_model_2_2_amazon(topk, model, user_history, eval_seq, item_embeddings,id_embs, test_batch_size, args, item_num, Log_file, v_or_t, local_rank):
@@ -947,7 +954,7 @@ def eval_model_2_2_amazon(topk, model, user_history, eval_seq, item_embeddings,i
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Electronics_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Electronics_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1012,7 +1019,7 @@ def eval_model_2_3tower_amazon(topk, model, user_history, eval_seq,item_embeddin
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Electronics_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Electronics_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1137,7 +1144,7 @@ def eval_model_2_2_amazon_pantry(topk, model, user_history, eval_seq, item_embed
     return mean_eval[0]
 
 
-def eval_model_2_3tower_amazon_pantry(topk, model, user_history, eval_seq,item_embeddings3, item_embeddings,id_embs, test_batch_size, args, item_num, Log_file, v_or_t, local_rank):
+def eval_model_2_3tower_amazon_pantry(topk, model, user_history, eval_seq,item_embeddings3, item_embeddings,id_embs, test_batch_size, args, item_num, Log_file, v_or_t, local_rank, return_full_metrics=False):
     eval_dataset = BuildEvalDataset_3(u2seq=eval_seq, item_content=item_embeddings, item_content3=item_embeddings3,id_embs = id_embs, \
                                     max_seq_len=args.max_seq_len, item_num=item_num)
     #eval_dataset = BuildEvalDataset(u2seq=eval_seq, item_content=item_embeddings,
@@ -1147,17 +1154,7 @@ def eval_model_2_3tower_amazon_pantry(topk, model, user_history, eval_seq,item_e
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
-    #ee.columns = ['id', 'fre']
-    e=ee.sort_values('fre',ascending=False)
-    #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
-    l=[0, 35, 100, 205, 361, 585, 898, 1357, 2074, 3348, 8348]
-    e['bin']=0
-    for k in range(10):
-        e.iloc[l[k]:l[k+1],2]=k+1
-    e=e.sort_values('id',ascending=True)
-    bins=e['bin'].to_numpy()
-    bins[0]=0
+    bins = build_pantry_frequency_bins(args, item_num, Log_file.info)
     act=torch.nn.Sigmoid()
     alpha = act(model.module.alpha[bins])
     alpha2 = act(model.module.alpha2[bins])
@@ -1204,6 +1201,8 @@ def eval_model_2_3tower_amazon_pantry(topk, model, user_history, eval_seq,item_e
         Hit10, nDCG10 = eval_all_user
         mean_eval = eval_concat([Hit10, nDCG10], test_sampler)
         print_metrics(mean_eval, Log_file, v_or_t)
+    if return_full_metrics:
+        return {"HR@10": float(mean_eval[0]), "nDCG@10": float(mean_eval[1])}
     return mean_eval[0]
 
 
@@ -1782,7 +1781,7 @@ def eval_model_2_3tower_amazon_gru(topk, model, user_history, eval_seq,item_embe
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/dataset/amazon/Electronics_fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'Electronics_fre.csv')
     #ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1857,7 +1856,7 @@ def eval_model_2_3tower_mind_gru(topk, model, user_history, eval_seq,item_embedd
                          num_workers=args.num_workers, pin_memory=True, sampler=test_sampler)
     model.eval()
     topK = topk
-    ee=pd.read_csv('/dataset/fre.csv')
+    ee=pd.read_csv(ROOT / 'dataset' / 'fre.csv')
     ee.columns = ['id', 'fre']
     e=ee.sort_values('fre',ascending=False)
     l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -1918,4 +1917,3 @@ def eval_model_2_3tower_mind_gru(topk, model, user_history, eval_seq,item_embedd
         mean_eval = eval_concat([Hit10, nDCG10], test_sampler)
         print_metrics(mean_eval, Log_file, v_or_t)
     return mean_eval[0]
-

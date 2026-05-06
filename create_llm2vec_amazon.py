@@ -1,36 +1,65 @@
+import os
+import argparse
+from pathlib import Path
+
 import pandas as pd
 from tqdm import tqdm
-import os
-from pathlib import Path
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-from llm2vec import LLM2Vec
 import torch
 
-ROOT = Path(__file__).resolve().parent
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", type=Path, default=Path("./dataset"))
+    parser.add_argument("--model_dir", type=Path, default=Path("./models"))
+    parser.add_argument("--llama_path", type=Path, default=Path("./models/Meta-Llama-3-8B-Instruct"))
+    parser.add_argument("--llm2vec_path", type=Path, default=Path("./models/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised"))
+    parser.add_argument("--llm2vec_output", type=Path, default=Path("./dataset/Amazon_Prime_Pantry_llm2vec.pt"))
+    parser.add_argument("--batch_size", type=int, default=1000)
+    return parser.parse_args()
+
+
+def require_path(path, description):
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {description}: {path}")
+    return path
 
 
 def main():
+    args = parse_args()
+    from llm2vec import LLM2Vec
+
+    metadata_path = require_path(args.data_dir / "metadata_Prime_Pantry.csv", "Prime Pantry metadata")
+    require_path(args.llama_path, "Llama model directory")
+    require_path(args.llm2vec_path, "LLM2Vec PEFT directory")
+
     l2v = LLM2Vec.from_pretrained(
-        str(ROOT / "models" / "Meta-Llama-3-8B-Instruct"),
-        peft_model_name_or_path=str(ROOT / "models" / "LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised"),
+        str(args.llama_path),
+        peft_model_name_or_path=str(args.llm2vec_path),
         device_map="cuda",
         torch_dtype=torch.bfloat16,
     )
-    d = pd.read_csv(ROOT / 'dataset' / 'metadata_Prime_Pantry.csv')
+    metadata = pd.read_csv(metadata_path)
+    if "title" not in metadata.columns:
+        raise ValueError(f"{metadata_path} must contain a 'title' column")
 
+    print(f"metadata_count={len(metadata)}")
     item_word_embs = [torch.zeros(4096)]
-    for i in tqdm(range(8)):
-        strlist = d.iloc[1000 * i:1000 * (i + 1), 1].tolist()
-        item_feature = l2v.encode(strlist)
+    titles = metadata["title"].fillna("").astype(str).tolist()
+    for start in tqdm(range(0, len(titles), args.batch_size)):
+        batch = titles[start:start + args.batch_size]
+        item_feature = l2v.encode(batch)
         item_word_embs.extend(item_feature)
 
-    strlist = d.iloc[8000:, 1].tolist()
-    item_feature = l2v.encode(strlist)
-    item_word_embs.extend(item_feature)
-
-    a = torch.stack(tensors=item_word_embs, dim=0)
-    torch.save(a, ROOT / 'dataset' / 'Amazon_Prime_Pantry_llm2vec.pt')
+    output = torch.stack(tensors=item_word_embs, dim=0)
+    if output.shape != (len(metadata) + 1, 4096):
+        raise ValueError(f"Expected embedding shape {(len(metadata) + 1, 4096)}, got {tuple(output.shape)}")
+    args.llm2vec_output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(output, args.llm2vec_output)
+    print(f"embedding_shape={tuple(output.shape)}")
+    print(f"saved_path={args.llm2vec_output}")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def _require_file(path, description):
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {description}: {path}")
+    return path
+
 def read_behaviors_amazon(behaviors_path, before_item_id_to_dic, before_item_name_to_id, before_item_id_to_name, max_seq_len, min_seq_len, Log_file):
     #Log_file.info("##### news number {} {} (before clearing)#####".format(len(before_item_id_to_dic), len(before_item_name_to_id)))
     #Log_file.info("##### min seq len {}, max seq len {}#####".format(min_seq_len, max_seq_len))
@@ -24,7 +31,7 @@ def read_behaviors_amazon(behaviors_path, before_item_id_to_dic, before_item_nam
     Log_file.info('rebuild user seqs...')
     s=0
     l=[]
-    c=pd.read_csv('/dataset/Electronics_cleaned_history.csv',converters={'history':eval})
+    c=pd.read_csv(_require_file(behaviors_path, 'Electronics history'),converters={'history':eval})
     for i in range(c.shape[0]):
         user_name = c.iloc[i,1]
         history_item_name = c.iloc[i,2]
@@ -68,7 +75,7 @@ def read_news_bert_amazon(news_path, args):
     item_id_to_dic = {}
     item_id_to_name = {}
     item_name_to_id = {}
-    c=pd.read_csv('/dataset/metadata_Electronics.csv')
+    c=pd.read_csv(_require_file(Path(args.data_dir) / 'metadata_Electronics.csv', 'Electronics metadata'))
     c['index']=c.index+1
     item_name_to_id = c.set_index('asin')['index'].to_dict()
     return item_id_to_dic, item_name_to_id, item_id_to_name
@@ -86,7 +93,9 @@ def read_behaviors_amazon_pantry(behaviors_path, before_item_id_to_dic, before_i
     Log_file.info('rebuild user seqs...')
     s=0
     l=[]
-    c=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_cleaned_history.csv',converters={'history':eval})
+    if behaviors_path is None:
+        behaviors_path = Path(args.data_dir) / 'Prime_Pantry_cleaned_history.csv'
+    c=pd.read_csv(_require_file(behaviors_path, 'Prime Pantry cleaned history'),converters={'history':eval})
     for i in range(c.shape[0]):
         user_name = c.iloc[i,1]
         history_item_name = c.iloc[i,2]
@@ -131,7 +140,8 @@ def read_news_bert_amazon_pantry(news_path, args):
     item_id_to_dic = {}
     item_id_to_name = {}
     item_name_to_id = {}
-    c=pd.read_csv(ROOT / 'dataset' / 'metadata_Prime_Pantry.csv')
+    metadata_path = Path(args.data_dir) / 'metadata_Prime_Pantry.csv'
+    c=pd.read_csv(_require_file(metadata_path, 'Prime Pantry metadata'))
     c['index']=c.index+1
     item_name_to_id = c.set_index('asin')['index'].to_dict()
     return item_id_to_dic, item_name_to_id, item_id_to_name

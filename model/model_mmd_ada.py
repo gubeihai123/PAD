@@ -367,7 +367,7 @@ class Model2_transfer(torch.nn.Module):
         if self.use_modal:
             input_embs_content=self.turn_dim1(input_embs_content)
             input_embs_all = self.mlp_layers(self.fc(input_embs_id, input_embs_content))
-            mkmmd_loss = 0.2*self.mkmmd_loss(input_embs_content, input_embs_id)
+            mkmmd_loss = self.gamma*self.mkmmd_loss(input_embs_content, input_embs_id)
             #mkmmd_loss = self.gamma*(self.mkmmd_loss(input_embs_id, input_embs_content)+self.mkmmd_loss(input_embs_content, input_embs_id))
             #print('mmd loss')
             #print(mkmmd_loss)

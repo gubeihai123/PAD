@@ -91,8 +91,8 @@ def para_and_log(model, seq_num, batch_size, Log_file, logging_num, testing_num)
 
     step_num = math.ceil(seq_num / dist.get_world_size() / batch_size)
     Log_file.info("##### all {} steps #####".format(step_num))
-    steps_for_log = int(step_num / logging_num)
-    steps_for_test = int(step_num / testing_num)
+    steps_for_log = max(1, int(step_num / logging_num))
+    steps_for_test = max(1, int(step_num / testing_num))
     Log_file.info("##### {} logs/epoch; {} steps/log #####".format(logging_num, steps_for_log))
     Log_file.info("##### {} tests/epoch; {} steps/test #####".format(testing_num, steps_for_test))
     return steps_for_log, steps_for_test

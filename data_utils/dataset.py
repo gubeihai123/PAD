@@ -7,6 +7,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import math
 import random
 from pathlib import Path
+from .repro import build_pantry_frequency_bins, require_file
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,7 +19,7 @@ class BuildTrainDataset_kl(Dataset):
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv('/dataset/fre.csv')
+        ee=pd.read_csv(require_file(ROOT / 'dataset' / 'fre.csv', 'frequency file'))
         ee.columns = ['id', 'fre']
         e=ee.sort_values('fre',ascending=False)
         l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -75,7 +76,7 @@ class BuildTrainDataset_ablation(Dataset):
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv('/dataset/fre.csv')
+        ee=pd.read_csv(require_file(ROOT / 'dataset' / 'fre.csv', 'frequency file'))
         ee.columns = ['id', 'fre']
         e=ee.sort_values('fre',ascending=False)
         l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -132,7 +133,7 @@ class BuildTrainDataset_new(Dataset):
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv('/dataset/fre.csv')
+        ee=pd.read_csv(require_file(ROOT / 'dataset' / 'fre.csv', 'frequency file'))
         ee.columns = ['id', 'fre']
         e=ee.sort_values('fre',ascending=False)
         l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -188,7 +189,7 @@ class BuildTrainDataset_new_amazon_ele(Dataset):
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv('/dataset/Electronics_fre.csv')
+        ee=pd.read_csv(require_file(ROOT / 'dataset' / 'Electronics_fre.csv', 'Electronics frequency file'))
         #ee.columns = ['id', 'fre']
         e=ee.sort_values('fre',ascending=False)
         #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
@@ -240,24 +241,18 @@ class BuildTrainDataset_new_amazon_ele(Dataset):
  
 class BuildTrainDataset_new_amazon_pantry(Dataset): 
     def __init__(self, u2seq, item_content,
-                 item_num, max_seq_len, use_modal):
+                 item_num, max_seq_len, use_modal, args=None, bins=None):
         self.u2seq = u2seq
         self.item_content = item_content
         self.item_num = item_num
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
-        ee=pd.read_csv(ROOT / 'dataset' / 'Prime_Pantry_fre.csv')
-        #ee.columns = ['id', 'fre']
-        e=ee.sort_values('fre',ascending=False)
-        #l = [0, 41, 127, 276, 517, 889, 1467, 2413, 4070, 7618, 79707, 79708]
-        #l=[0, 233, 856, 2090, 4327, 8214, 14950, 27012, 50742, 109145, 423192]
-        l=[0, 35, 100, 205, 361, 585, 898, 1357, 2074, 3348, 8348]
-        e['bin']=0
-        for k in range(10):
-            e.iloc[l[k]:l[k+1],2]=k+1
-        e=e.sort_values('id',ascending=True) ##################
-        self.bins=e['bin'].to_numpy()
-        self.bins[0]=0
+        if bins is not None:
+            self.bins = bins
+        elif args is not None:
+            self.bins = build_pantry_frequency_bins(args, item_num)
+        else:
+            raise ValueError("BuildTrainDataset_new_amazon_pantry requires args or precomputed bins")
     
     def __len__(self):
         return len(self.u2seq)
@@ -393,7 +388,7 @@ class BuildTrainDataset2(Dataset):
         self.max_seq_len = max_seq_len + 1
         self.use_modal = use_modal
         
-        self.ee=pd.read_csv('/dataset/fre.csv')
+        self.ee=pd.read_csv(require_file(ROOT / 'dataset' / 'fre.csv', 'frequency file'))
         #self.ee.columns = ['id', 'fre']
         e=self.ee['fre']
         self.q1=torch.tensor(((e<=6)&(e>0))).detach().numpy()
