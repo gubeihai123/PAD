@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--per_device_batch_size", type=int, default=16)
     parser.add_argument("--target_global_batch_size", type=int, default=128)
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=None)
     parser.add_argument("--auto_adjust_batch_size", type=str2bool, default=False)
     parser.add_argument("--eval_batch_size", type=int, default=512)
     parser.add_argument("--epoch", type=int, default=1)

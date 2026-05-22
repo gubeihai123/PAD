@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--llama_path", type=Path, default=Path("./models/Meta-Llama-3-8B-Instruct"))
     parser.add_argument("--llm2vec_path", type=Path, default=Path("./models/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised"))
     parser.add_argument("--llm2vec_output", type=Path, default=Path("./dataset/Amazon_Prime_Pantry_llm2vec.pt"))
-    parser.add_argument("--batch_size", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=128)
     return parser.parse_args()
 
 

@@ -134,9 +134,22 @@ def configure_batch_size(args, world_size, log_fn=print):
             )
         args.per_device_batch_size = max(1, args.target_global_batch_size // world_size)
         args.batch_size = args.per_device_batch_size
-    args.effective_global_batch_size = int(args.per_device_batch_size) * int(world_size)
+    local_global_batch = int(args.per_device_batch_size) * int(world_size)
+    if args.gradient_accumulation_steps is None:
+        if args.target_global_batch_size % local_global_batch != 0:
+            warnings.warn(
+                f"target_global_batch_size={args.target_global_batch_size} is not divisible by "
+                f"per_device_batch_size*world_size={local_global_batch}; effective batch will be "
+                f"{local_global_batch}.",
+                stacklevel=2,
+            )
+            args.gradient_accumulation_steps = 1
+        else:
+            args.gradient_accumulation_steps = max(1, args.target_global_batch_size // local_global_batch)
+    args.effective_global_batch_size = local_global_batch * int(args.gradient_accumulation_steps)
     log_fn(f"world_size={world_size}")
     log_fn(f"per_device_batch_size={args.per_device_batch_size}")
+    log_fn(f"gradient_accumulation_steps={args.gradient_accumulation_steps}")
     log_fn(f"effective_global_batch_size={args.effective_global_batch_size}")
     log_fn(f"eval_batch_size={args.eval_batch_size}")
     return args
@@ -223,6 +236,16 @@ def load_checkpoint_into_model(model, ckpt_path, local_rank, strict=False):
     if "cuda_rng_state" in checkpoint and torch.cuda.is_available():
         torch.cuda.set_rng_state(checkpoint["cuda_rng_state"])
     return checkpoint
+
+
+def load_best_checkpoint_for_eval(args, phase, model, local_rank, log_fn=print):
+    best_path = phase_checkpoint_dir(args, phase) / args.save_best_name
+    if not best_path.exists():
+        raise FileNotFoundError(f"Best checkpoint not found for {phase}: {best_path}")
+    target = model.module if hasattr(model, "module") else model
+    checkpoint = load_checkpoint_into_model(target, best_path, local_rank, strict=False)
+    log_fn(f"Loaded best checkpoint for final test: {best_path}")
+    return checkpoint, best_path
 
 
 def jsonable(value):

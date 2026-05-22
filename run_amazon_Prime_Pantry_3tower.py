@@ -1,4 +1,5 @@
 import torch.optim as optim
+from contextlib import nullcontext
 import re
 from pathlib import Path
 from torch.utils.data import DataLoader
@@ -23,6 +24,7 @@ from data_utils.repro import (
     append_metrics,
     build_pantry_frequency_bins,
     configure_batch_size,
+    load_best_checkpoint_for_eval,
     load_checkpoint_into_model,
     pantry_paths,
     prepare_run_dirs,
@@ -164,8 +166,14 @@ def train(args, use_modal, local_rank):
         loss, batch_index, need_break = 0.0, 1, False
         model.train()
         train_dl.sampler.set_epoch(now_epoch)
+        optimizer.zero_grad(set_to_none=True)
+        total_train_batches = len(train_dl)
 
         for data in train_dl:
+            should_step = (
+                batch_index % args.gradient_accumulation_steps == 0
+                or batch_index == total_train_batches
+            )
             sample_items_id, sample_items_content, log_mask, bin_pos, bin_neg = data
             sample_items_id, sample_items_content, log_mask, bin_pos, bin_neg = \
                 sample_items_id.to(local_rank), sample_items_content.to(local_rank), log_mask.to(local_rank), bin_pos.to(local_rank), bin_neg.to(local_rank)
@@ -174,13 +182,16 @@ def train(args, use_modal, local_rank):
                 sample_items_content = sample_items_content.view(-1, sample_items_content.size(-1))
             sample_items_id = sample_items_id.view(-1)
 
-            optimizer.zero_grad()
-            with torch.cuda.amp.autocast():
+            sync_context = nullcontext() if should_step else model.no_sync()
+            with sync_context, torch.cuda.amp.autocast():
                 bz_loss = model(sample_items_id, sample_items_content, log_mask,bin_pos, bin_neg, local_rank)
                 loss += bz_loss.data.float()
-            scaler.scale(bz_loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+                scaled_loss = bz_loss / args.gradient_accumulation_steps
+            scaler.scale(scaled_loss).backward()
+            if should_step:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad(set_to_none=True)
 
             if torch.isnan(loss.data):
                 need_break = True
@@ -213,6 +224,7 @@ def train(args, use_modal, local_rank):
             break
     if dist.get_rank() == 0:
         save_checkpoint(now_epoch, model, model_dir, optimizer, scaler, Log_file.info)
+    dist.barrier()
     Log_file.info('\n')
     Log_file.info('%' * 90)
     Log_file.info(' max eval Hit10 {:0.5f}  in epoch {}'.format(max_eval_value * 100, max_epoch))
@@ -221,6 +233,7 @@ def train(args, use_modal, local_rank):
     Log_screen.info('{} train end in epoch {}'.format(args.label_screen, early_stop_epoch))
     Log_file.info('gamma2 {}'.format(args.gamma2))
     Log_file.info('lr {}'.format(args.lr))
+    _, best_path = load_best_checkpoint_for_eval(args, "phase3", model, local_rank, Log_file.info)
     item_embeddings3, item_embeddings, id_embs = get_item_embeddings_llm_3tower(model, item_word_embs, args.eval_batch_size, args, use_modal, local_rank)
     test_metrics = eval_model_2_3tower_amazon_pantry(10, model, users_history_for_test, users_test, item_embeddings3, item_embeddings, id_embs, args.eval_batch_size, args,
                              item_num, Log_file, args.mode, local_rank, return_full_metrics=True)
@@ -228,7 +241,7 @@ def train(args, use_modal, local_rank):
         save_best_summary(args, {"best_epoch": max_epoch, "best_valid_HR@10": max_eval_value,
                                  "best_valid_nDCG@10": best_ndcg, "final_test_HR@10": test_metrics["HR@10"],
                                  "final_test_nDCG@10": test_metrics["nDCG@10"],
-                                 "checkpoint_path": Path(model_dir) / args.save_best_name,
+                                 "checkpoint_path": best_path,
                                  "world_size": dist.get_world_size(),
                                  "per_device_batch_size": args.per_device_batch_size,
                                  "effective_global_batch_size": args.effective_global_batch_size,

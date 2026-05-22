@@ -51,9 +51,15 @@ tensorboard/
 *.pickle
 *.npy
 *.npz
+*.parquet
+*.arrow
+*.h5
+*.hdf5
+*.joblib
 
 # Local model downloads and Hugging Face cache
 models/
+.huggingface/
 .cache/
 **/.cache/
 

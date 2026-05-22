@@ -7,7 +7,7 @@ if [[ -n "${NPROC_PER_NODE:-}" ]]; then
 elif [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
   NPROC="$(python -c "import os; print(len([x for x in os.environ['CUDA_VISIBLE_DEVICES'].split(',') if x.strip()]))")"
 else
-  NPROC="8"
+  NPROC="$(python -c "import torch; print(torch.cuda.device_count())")"
 fi
 MASTER_PORT="${MASTER_PORT:-12345}"
 
